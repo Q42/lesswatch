@@ -20,7 +20,7 @@ npm install less --global
 ```
 Then, install lesswatch.
 ```
-npm install lesswatch -global
+npm install lesswatch --global
 ```
 
 ###Usage 
