@@ -12,17 +12,6 @@ https://github.com/jonycheung/Dead-Simple-LESS-Watch-Compiler
 Mikeal Rogers for writing the original folder watch script
 https://github.com/mikeal/watch
        
-Usage:     
-```
-lesswatch [options] <source-folder> <destination-folder>
-```
-Example:   
-```
-lesswatch --line-numbers=mediaquery less css
-```
-    
-That will watch ./less folder and compile the less css files into ./css when they are added/changed and add mediaquery-formatted debug info to the css for debugging with webkit-inspector.
-
 ###Installation instructions
 
 First, install LESS. Best to make them accessible from anywhere in your shell.
