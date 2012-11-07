@@ -1,0 +1,33 @@
+{
+  "author": "@mrtnkl http://martinkool.com",
+  "name": "lesswatch",
+  "version": "0.0.2",
+  "repository": {
+    "url": ""
+  },
+  "engines": {
+    "node": ">=0.5.0"
+  },
+  "dependencies": {
+    "less": "*"
+  },
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "readmeFilename": "README.md",
+  "description": "LESS folder watcher with optional debug information",
+  "main": "lesswatch.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "less",
+    "css",
+    "webkit",
+    "debug"
+  ],
+  "license": "MIT",
+  "preferGlobal": "true",
+   "bin": {
+     "lesswatch" : "lesswatch.js"
+   }
+}
