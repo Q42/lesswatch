@@ -19,22 +19,28 @@ Example:   node lesswatch.js --line-numbers=mediaquery less css
                ./css when they are added/changed and add mediaquery-formatted 
                debug info to the css for debugging with webkit-inspector.
 
-###Prerequisites
-Install LESS (http://www.lesscss.org/) and make sure the `lessc` binary is accessible to the script. Installing LESS with the `--global` flag will make the binary accessible to your system.
+###Installation instructions
+
+First, install LESS. Best to make them accessible from anywhere in your shell.
 ```
 npm install less --global
+```
+Then, install lesswatch.
+```
+npm install lesswatch -global
 ```
 
 ###Usage 
 ```
-node lesswatch.js [options] <source-folder> <destination-folder>
+lesswatch [options] <source-folder> <destination-folder>
 ```
 ###Example 
 ```
-node lesswatch.js --line-numbers=mediaquery less css
+lesswatch --line-numbers=mediaquery less css
 ```
 That will watch ./less folder and compile the less css files into ./css when they are added/changed and add mediaquery-formatted debug info to the css for debugging with webkit-inspector.
 
 * This script only compiles files with `.less` extension. More file extensions can be added by modifying the `allowedExtensions` array.
 * Files that start with underscores `_style.css` or period `.style.css` are ignored. This behavior can be changed in the `filterFiles()` function.
 
+Github: https://github.com/Q42/lesswatch

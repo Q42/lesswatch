@@ -3,7 +3,7 @@
   "name": "lesswatch",
   "version": "0.0.2",
   "repository": {
-    "url": ""
+    "url": "https://github.com/Q42/lesswatch"
   },
   "engines": {
     "node": ">=0.5.0"
