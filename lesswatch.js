@@ -162,24 +162,24 @@ var watchTree = function ( root, options, watchCallback, initCallback ) {
 }
 
 // String function to retrieve the filename without the extension
-function getFilenameWithoutExtention(string){
-  //extract filename (xxx.less)
-  //strip out the extension
-  var filename = string.replace(/^.*[\\\/]/, '').split(".")[0];
-  return filename
+function getFilenameWithoutExtension(filename){
+  var parts = filename.replace(/^.*[\\\/]/, '').split(".");
+  parts.pop();
+  return parts.join(".");
 }
 
 // String function to retrieve the file's extension
-function getFileExtension(string){
-  var extension = string.split(".").pop();
-  if (extension == string) return ""
+function getFileExtension(filename){
+  var extension = filename.split(".").pop();
+  if (extension == filename)
+    return ""
   else
-  return extension;
+    return extension;
 }
 
 // Here's where we run the less compiler
 function compileCSS(file){
-  var filename = getFilenameWithoutExtention(file);
+  var filename = getFilenameWithoutExtension(file);
     var destFile = destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css";
     var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + destFile;
     console.log("Command: '"+command+"'");
@@ -224,7 +224,7 @@ function compileCSS(file){
 
 // This is the function we use to filter the files to watch.
 function filterFiles(f, stat){
-  var filename = getFilenameWithoutExtention(f);
+  var filename = getFilenameWithoutExtension(f);
   var extension = getFileExtension(f);
   if (filename.substr(0,1) == "_" || 
       filename.substr(0,1) == "." || 
