@@ -54,13 +54,17 @@ args.forEach(function (arg) {
 	}
 });
 
-if (!sourceFolder || !destFolder){
+if (!sourceFolder){
 	console.log("Usage:");
-	console.log("  node lesswatch.js [options] <source-folder> <destination-folder>");
+	console.log("  node lesswatch.js [options] <source-folder> [destination-folder]");
 	console.log("  ([options] can contain original lessc options to pass to the compiler)");
-	console.log("\nExamples:");
+	console.log("\nThe source-folder will be scanned recursively.\nPay attention when you are specifying `destination-folder` and naming multiple files with the same name but in different/sub foldersas they might get overriten.");
+	console.log("\nTo export 'less/*.less' into 'css/*.css':");
 	console.log("  node lesswatch.js less css");
 	console.log("  node lesswatch.js --line-numbers=mediaquery less css");
+    console.log("\nTo export the files into the same folder as the 'less/*.less' files are:");
+    console.log("  node lesswatch.js less");
+	console.log("  node lesswatch.js --line-numbers=mediaquery less");
 	process.exit(1);
 }
 
@@ -97,12 +101,15 @@ function walk (dir, options, callback, initCallback) {
 						if (options.filter && options.filter(f, stat)) return done && callback(null, callback.files);
 						callback.files[f] = stat;
 						if (stat.isDirectory()) {
-							walk(f, options, callback);
+							console.log("Scanning ", f);
+							walk(f, options, callback, initCallback);
 						}else{
-							initCallback&&initCallback(f);
+							initCallback&&initCallback(f, stat);
 						}
 
-						if (done) callback(null, callback.files);
+						if (done)  {
+							callback(null, callback.files);
+						}
 					}
 				})
 			})
@@ -113,6 +120,7 @@ function walk (dir, options, callback, initCallback) {
 
 }
 
+var dependinces = {};
 //Setup fs.watchFile() for each file.
 var watchTree = function ( root, options, watchCallback, initCallback ) {
 	if (!watchCallback) {watchCallback = options; options = {}}
@@ -180,11 +188,14 @@ function getFileExtension(filename){
 // Here's where we run the less compiler
 function compileCSS(file){
 	var filename = getFilenameWithoutExtension(file);
-	var destFile = destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css";
+	
+	var destFile = destFolder ? destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css" : path.join(path.dirname(file),  filename.replace(/\s+/g, "\\ ") + ".css");
+	var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " ";
+	console.log(new Date().toLocaleTimeString(), command);
 	var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + destFile;
-	console.log("Command: '"+command+"'");
 	// Run the command
 	exec(command, function (error, stdout, stderr) {
+		
 		if (error !== null) {
 			console.log('exec error: ' + error);
 			console.log("stdout : " + stdout)
@@ -226,22 +237,21 @@ function compileCSS(file){
 function filterFiles(f, stat){
 	var filename = getFilenameWithoutExtension(f);
 	var extension = getFileExtension(f);
-	if (filename.substr(0,1) == "_" || 
+	if (stat && !stat.isDirectory())
+		if (filename.substr(0,1) == "_" || 
 		filename.substr(0,1) == "." || 
 		filename == "" ||
 		allowedExtensions.indexOf(extension) == -1
 		)
-		return true;
-	else{
-		return false;
-	}   
+			return true;
+	return false;
 }
 
 // Here's where we setup the watch function 
 watchTree(
   sourceFolder, 
   {interval: 500, ignoreDotFiles:true,filter:filterFiles}, 
-  function (f, curr, prev) {
+  function (f, curr, prev, rebuilt) {
   	if (typeof f == "object" && prev === null && curr === null) {
   		// Finished walking the tree
   		return;
@@ -250,12 +260,55 @@ watchTree(
   		console.log(f +" was removed.")
   	}else {
   		// f is a new file or changed
-  		console.log("The file: "+f+ " was changed.")
-  		console.log("Recompiling CSS.. "+Date());
-  		compileCSS(f);
+  		//console.log("The file: "+f+ " was changed. "+new Date().toLocaleTimeString())
+  		if (!rebuilt) 
+  			console.log("");
+  		rebuilt = rebuilt || {};
+  		if (!rebuilt[f]) {
+  			rebuilt[f] = 1;
+  			compileCSS(f);
+  			var fullPath = path.resolve(f);
+  			var compile = arguments.callee;
+  			for(var file in dependinces) {
+  				for(var f in dependinces[file]) {
+  					if (f == fullPath) {
+  						compile.call(this, file, {}, {}, rebuilt);
+  						break;
+  					}
+  				}
+  			}
+  		}
   	}
   },
-  function(f){
+  function(f, stat){
+  	//automatically detect dependinces such as @import url('a.less') or '../b.less' or '/c.less' or 'http://localhost/d.less'
+	//so whenever they change generate its parents too!
+  	dependinces[f] = dependinces[f] || {};
+  	fs.readFile(f, 'utf8', function(err, data) {
+  		if (err) {
+  			console.log(f + ' cannot be read to determine url imports');
+  		}
+  		data.replace(/url\s*\([\s\'\"]*(.*\.less)?[\s\'\"]*\)/gi, function(match, url) {
+  			var lessDir = path.dirname(f);
+  			var root = path.resolve("");
+  			var uriRegex = /(https?|file)(\:\/\/)(.*?)\/(.*)/gi;
+			if (uriRegex.test(url))
+  				url.replace(uriRegex, function(match, protocol, protocol_suffix, domain, url){
+  					addDependince("", root, url);
+  					return url;
+  				});
+  			else {
+				addDependince(root, lessDir, url);
+  			}
+  			return match;
+  			function addDependince(root, lessDir, relative, join) {
+  				relative = relative.replace(/\//g, '\\');
+  				var final = path.join(lessDir, relative);
+  				final = path.join(root, final);
+  				dependinces[f][final]=1;
+			  }
+  		});
+  	});
   	compileCSS(f);
   }
 );

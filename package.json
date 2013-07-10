@@ -1,7 +1,7 @@
 {
   "author": "@mrtnkl http://martinkool.com",
   "name": "lesswatch",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "repository": {
     "url": "https://github.com/Q42/lesswatch"
   },
@@ -27,7 +27,7 @@
   ],
   "license": "MIT",
   "preferGlobal": "true",
-   "bin": {
-     "lesswatch" : "lesswatch.js"
-   }
+  "bin": {
+    "lesswatch": "lesswatch.js"
+  }
 }
