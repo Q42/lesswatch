@@ -169,6 +169,7 @@ function walk (dir, options, callback, initCallback) {
 	//else console.log("Folder or file already parsed", lowerCaseDir);
 }
 
+var watchFilePooling = {};//used for fs.watchFile as it executes too many times for the same change
 //Setup fs.watchFile() for each file.
 var watchTree = function ( roots, options, watchCallback, initCallback ) {
 	if (!watchCallback) {watchCallback = options; options = {}, watching = {}}
@@ -180,6 +181,17 @@ var watchTree = function ( roots, options, watchCallback, initCallback ) {
 			if (err) throw err;
 			var fileWatcher = function (f) {
 				fs.watchFile(f, options, function (c, p) {
+					if (watchFilePooling[f]+50>new Date().getTime())
+						return;
+					watchFilePooling[f] = new Date().getTime();
+					if (c.nlink === 0) {
+						// unwatch removed files.
+						if (files[f])
+							watchCallback(f, c, p);
+						delete files[f]
+						fs.unwatchFile(f);
+						return;
+					}
 					// Check if anything actually changed in stat
 					if (files[f] && !files[f].isDirectory() && c.nlink !== 0 && files[f].mtime.getTime() == c.mtime.getTime()) return;
 					files[f] = c;
@@ -196,7 +208,7 @@ var watchTree = function ( roots, options, watchCallback, initCallback ) {
 									fs.stat(file, function (err, stat) {
 										if(options.ignoreDotFiles && (path.basename(b)[0] === '.')) return;
 										if(options.filter&& options.filter(b, stat)) return;
-										console.log("changed file", file, options.filter);
+										console.log("changed file", file);
 										watchCallback(file, stat, null);
 										files[file] = stat;
 										fileWatcher(file); 
@@ -204,11 +216,6 @@ var watchTree = function ( roots, options, watchCallback, initCallback ) {
 								}
 							})
 						})
-					}
-					if (c.nlink === 0) {
-						// unwatch removed files.
-						delete files[f]
-						fs.unwatchFile(f);
 					}
 				})
 			}
