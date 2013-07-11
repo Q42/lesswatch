@@ -19,12 +19,30 @@
     Mikeal Rogers for writing the original folder watch script
     https://github.com/mikeal/watch
        
-    Usage:     node lesswatch.js [options] <source-folder> <destination-folder>
-    Example:   node lesswatch.js --line-numbers=mediaquery less css
-    
-               That will watch ./less folder and compile the less css files into 
+    Usage:     node lesswatch.js [options] <source-folder> [destination-folder]
+    Examples:  
+
+    Outputting all to a custom folder i.e. css
+	node lesswatch.js --line-numbers=mediaquery less css
+
+	  That will watch ./less folder and compile the less css files into 
                ./css when they are added/changed and add mediaquery-formatted 
                debug info to the css for debugging with webkit-inspector.
+    
+    Outputting all to the same folder as where the less source was found
+	node lesswatch.js --line-numbers=mediaquery less
+
+	  That will watch ./less folder and compile the less css files into 
+               ./less when they are added/changed and add mediaquery-formatted 
+               debug info to the css for debugging with webkit-inspector.
+
+    Monitoring multiple folders and outputting all to the same folder as where the less source was found
+	node lesswatch.js --line-numbers=mediaquery --source=less --source=content --source=App
+
+	That will watch ./less, ./content and ./App folders and compile the less css files into the same folder 
+               as the .less files were found when they are added/changed and add mediaquery-formatted 
+               debug info to the css for debugging with webkit-inspector.
+             
 */
 var allowedExtensions = ["less"];
 var sys = require('util')
@@ -35,138 +53,173 @@ var sys = require('util')
 
 var args = process.argv.slice(2)
   , lessArgs = [] // arguments to pass to the lessc compiler
-  , sourceFolder
+  , sourceFolders = []
   , destFolder
+  , caseSensitive = false
   , writeMediaQueryDebugInfo = false // flag to see if writing sass media query info was set
   , fixMediaQueryDebugInfo = true; // we could make this optional if we want
 
 args.forEach(function (arg) {
 	if (!arg.match(/^-+/)) {
-		if (!sourceFolder)
-			sourceFolder = arg;
+		if (!sourceFolders.length)
+			sourceFolders.push(arg);
 		else if (!destFolder)
 			destFolder = arg;
 	}
 	else {
-		lessArgs.push(arg);
-		if (arg.match(/\-\-line\-numbers\=mediaquery/i))
-			writeMediaQueryDebugInfo = true;
+		var source = /^-+-source=(.*)/i.exec(arg);
+		if (source)
+			sourceFolders.push(source[1]);
+		else {
+			if (arg.match(/\-\-case-sensitive/i))
+				caseSensitive = true;
+			else {
+				lessArgs.push(arg);
+				if (arg.match(/\-\-line\-numbers\=mediaquery/i))
+					writeMediaQueryDebugInfo = true;
+			}
+		}
 	}
 });
 
-if (!sourceFolder){
+if (!sourceFolders.length){
 	console.log("Usage:");
-	console.log("  node lesswatch.js [options] <source-folder> [destination-folder]");
+	console.log("  node lesswatch.js [options] <source-folder> [destination-folder] [--source=folder1] [--source=folder2] [--source=folder etc.]");
 	console.log("  ([options] can contain original lessc options to pass to the compiler)");
 	console.log("\nThe source-folder will be scanned recursively.\nPay attention when you are specifying `destination-folder` and naming multiple files with the same name but in different/sub foldersas they might get overriten.");
 	console.log("\nTo export 'less/*.less' into 'css/*.css':");
 	console.log("  node lesswatch.js less css");
 	console.log("  node lesswatch.js --line-numbers=mediaquery less css");
-    console.log("\nTo export the files into the same folder as the 'less/*.less' files are:");
-    console.log("  node lesswatch.js less");
+	console.log("\nTo export the files into the same folder as the 'less/*.less' files are:");
+	console.log("  node lesswatch.js less");
 	console.log("  node lesswatch.js --line-numbers=mediaquery less");
+	console.log("\nTo monitor and export multiple folders and export into the same folder as the '.less' files are:");
+	console.log("  node lesswatch.js --source=less --source=App/Home --source=Content");
+	console.log("  node lesswatch.js --line-numbers=mediaquery --source=less --source=App/Home --source=Content");
 	process.exit(1);
 }
 
 // Walk the directory tree
 function walk (dir, options, callback, initCallback) {
 	if (!callback) {callback = options; options = {}}
-	if (!callback.files) callback.files = {};
+	if (!options.files) options.files = {};
 	if (!callback.pending) callback.pending = 0;
-	callback.pending += 1;
-	fs.stat(dir, function (err, stat) {
-		if (err) return callback(err);
-		callback.files[dir] = stat;
-		fs.readdir(dir, function (err, files) {
+	var lowerCaseDir = fixCase(dir);
+	if (!options.watching[lowerCaseDir]) {
+		options.watching[lowerCaseDir] = 1;
+		callback.pending += 1;
+		fs.stat(dir, function (err, stat) {
 			if (err) return callback(err);
-			callback.pending -= 1;
-			files.forEach(function (f, index) {
-				f = path.join(dir, f);
-				callback.pending += 1;
-				fs.stat(f, function (err, stat) {
-					var enoent = false
-					  , done = false;
+			if (stat.isDirectory()) {//if dir is a folder, enumerate all its files 
+				options.files[dir] = stat;//monitor this directory for add/delete files
+				fs.readdir(dir, readDir.bind(this, dir));
+			}
+			else {
+				delete options.watching[lowerCaseDir];//we've already set above it is watched, but it is a file, remove this so we can watch & parse it
+				readDir("", null, [dir]);//otherwise it is a file, so only enumerate itself
+			}
 
-					if (err) {
-						if (err.code !== 'ENOENT') {
-							return callback(err);
-						} else {
-							enoent = true;
-						}
-					}
-					callback.pending -= 1;
-					done = callback.pending === 0;
-					if (!enoent) {
-						if (options.ignoreDotFiles && path.basename(f)[0] === '.') return done && callback(null, callback.files);
-						if (options.filter && options.filter(f, stat)) return done && callback(null, callback.files);
-						callback.files[f] = stat;
-						if (stat.isDirectory()) {
-							console.log("Scanning ", f);
-							walk(f, options, callback, initCallback);
-						}else{
-							initCallback&&initCallback(f, stat);
-						}
+			if (callback.pending === 0) callback(null, options.files);
 
-						if (done)  {
-							callback(null, callback.files);
-						}
-					}
-				})
-			})
-			if (callback.pending === 0) callback(null, callback.files);
-		})
-		if (callback.pending === 0) callback(null, callback.files);
-	})
+			function readDir(dir, err, files) {
+				if (err) return callback(err);
+				callback.pending -= 1;
+				files.forEach(function (f, index) {
+					f = path.join(dir, f);
+					var lowerCaseFile = fixCase(f);
+					if (!options.watching[lowerCaseFile]) {
+						options.watching[lowerCaseFile] = 1;
+					
+						callback.pending += 1;
+						fs.stat(f, function (err, stat) {
+							var enoent = false
+							  , done = false;
 
-}
+							if (err) {
+								if (err.code !== 'ENOENT') {
+									return callback(err);
+								} else {
+									enoent = true;
+								}
+							}
+							callback.pending -= 1;
+							done = callback.pending === 0;
+							if (!enoent) {
+								if (options.ignoreDotFiles && path.basename(f)[0] === '.') return done && callback(null, options.files);
+								if (options.filter && options.filter(f, stat)) return done && callback(null, options.files);
+								options.files[f] = stat;
+								if (stat.isDirectory()) {
+									walk(f, options, callback, initCallback);
+								}else{
+									initCallback&&initCallback(f, stat);
+								}
 
-var dependinces = {};
-//Setup fs.watchFile() for each file.
-var watchTree = function ( root, options, watchCallback, initCallback ) {
-	if (!watchCallback) {watchCallback = options; options = {}}
-	walk(root, options, function (err, files) {
-		if (err) throw err;
-		var fileWatcher = function (f) {
-			fs.watchFile(f, options, function (c, p) {
-				// Check if anything actually changed in stat
-				if (files[f] && !files[f].isDirectory() && c.nlink !== 0 && files[f].mtime.getTime() == c.mtime.getTime()) return;
-				files[f] = c;
-				if (!files[f].isDirectory()) {
-					if(options.ignoreDotFiles && (path.basename(f)[0] === '.')) return;
-					if(options.filter&& options.filter(f, files[f])) return;
-					watchCallback(f, c, p);
-				}else {
-					fs.readdir(f, function (err, nfiles) {
-						if (err) return;
-						nfiles.forEach(function (b) {
-							var file = path.join(f, b);
-							if (!files[file]) {
-								fs.stat(file, function (err, stat) {
-									if(options.ignoreDotFiles && (path.basename(b)[0] === '.')) return;
-									if(options.filter&& options.filter(b, files[b])) return;
-									watchCallback(file, stat, null);
-									files[file] = stat;
-									fileWatcher(file);
-								})
+								if (done)  {
+									callback(null, options.files);
+								}
 							}
 						})
-					})
-				}
-				if (c.nlink === 0) {
-					// unwatch removed files.
-					delete files[f]
-					fs.unwatchFile(f);
-				}
-			})
-		}
+					}
+					//else console.log("File already parsed", lowerCaseFile);
+				})
+				if (callback.pending === 0) callback(null, options.files);
+			}
+		})
+	}
+	//else console.log("Folder or file already parsed", lowerCaseDir);
+}
 
-		fileWatcher(root);
-		for (var i in files) {
-			fileWatcher(i);
+//Setup fs.watchFile() for each file.
+var watchTree = function ( roots, options, watchCallback, initCallback ) {
+	if (!watchCallback) {watchCallback = options; options = {}, watching = {}}
+	roots.forEach(function(root) {
+		
+		walk(root, options, callback, initCallback);
+		
+		function callback(err, files) {
+			if (err) throw err;
+			var fileWatcher = function (f) {
+				fs.watchFile(f, options, function (c, p) {
+					// Check if anything actually changed in stat
+					if (files[f] && !files[f].isDirectory() && c.nlink !== 0 && files[f].mtime.getTime() == c.mtime.getTime()) return;
+					files[f] = c;
+					if (!c.isDirectory()) {
+						if(options.ignoreDotFiles && (path.basename(f)[0] === '.')) return;
+						if(options.filter&& options.filter(f, c)) return;
+						watchCallback(f, c, p);
+					}else {
+						fs.readdir(f, function (err, nfiles) {
+							if (err) return;
+							nfiles.forEach(function (b) {
+								var file = path.join(f, b);
+								if (!files[file]) {
+									fs.stat(file, function (err, stat) {
+										if(options.ignoreDotFiles && (path.basename(b)[0] === '.')) return;
+										if(options.filter&& options.filter(b, stat)) return;
+										console.log("changed file", file, options.filter);
+										watchCallback(file, stat, null);
+										files[file] = stat;
+										fileWatcher(file); 
+									})
+								}
+							})
+						})
+					}
+					if (c.nlink === 0) {
+						// unwatch removed files.
+						delete files[f]
+						fs.unwatchFile(f);
+					}
+				})
+			}
+
+			fileWatcher(root);
+			for (var i in files) {
+				fileWatcher(i);
+			}
+			watchCallback(files, null, null, {});
 		}
-		watchCallback(files, null, null);
-	},
-	initCallback);
+	});
 }
 
 // String function to retrieve the filename without the extension
@@ -185,13 +238,12 @@ function getFileExtension(filename){
 		return extension;
 }
 
-// Here's where we run the less compiler
+//Here's where we run the less compiler
 function compileCSS(file){
 	var filename = getFilenameWithoutExtension(file);
 	
 	var destFile = destFolder ? destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css" : path.join(path.dirname(file),  filename.replace(/\s+/g, "\\ ") + ".css");
-	var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " ";
-	console.log(new Date().toLocaleTimeString(), command);
+	console.log(new Date().toLocaleTimeString(), "lessc " + lessArgs.join(" ") + " " + path.relative(path.resolve(""), path.resolve(file)).replace(/\s+/g, "\\ ") + " ");
 	var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + destFile;
 	// Run the command
 	exec(command, function (error, stdout, stderr) {
@@ -201,33 +253,44 @@ function compileCSS(file){
 			console.log("stdout : " + stdout)
 			console.log("stderr : " + stderr)
 		}
-		else if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
-			/*
-	
-			Now, the mediaquery lines are not written correctly for webkit inspector, so adjust them 
-			Change this:
-	
-			@media -sass-debug-info{filename{font-family:"z:\Path\To\style.less";}line{font-family:"42";}}
-	
-			into this:
-	
-			@media -sass-debug-info{filename{font-family:file\:\/\/z\:\/Path\/To\/style\.less}line{font-family:\0000342}}
-			*/
-			fs.readFile(destFile, 'utf8', function (err, data) {
-				if (err) {
-					console.log(destFile + ' written succesfully. Error while opening that file for fixing SASS media-query syntax... ');
+		else {
+			fs.stat(destFile, function(err, stat) {
+				//delete empty .css files generated such as for variables.less or mixins.less
+				if (!err)
+				if (stat.size == 0) {
+					//console.log("Dleeting empty file", destFile);
+					fs.unlink(destFile);
 				}
-					// loaded, change and save
-				else {
-					data = data.replace(/@media\s+\-sass\-debug\-info\{\s*filename\{\s*font\-family\:\s*\"(.+?)"\;?\}line\{\s*font\-family\:\s*\"(.+)\"\;?\}\}/g, function (m, mFn, mLn) {
-						return '@media -sass-debug-info{filename{font-family:file\\:\\/\\/' + mFn.replace(/\\/g, '\\\/').replace(/\:/g, '\\:').replace(/\./g, '\\.') + '}line{font-family:\\00003' + mLn + '}}';
-					});
-					fs.writeFile(destFile, data, function (err) {
-						if (err) {
-							console.log(destFile + ' written and read succesfully. Error while writing that file for fixing SASS media-query syntax... ', data, err);
-						}
-					});
-				}
+				else
+					if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
+						/*
+				
+						Now, the mediaquery lines are not written correctly for webkit inspector, so adjust them 
+						Change this:
+				
+						@media -sass-debug-info{filename{font-family:"z:\Path\To\style.less";}line{font-family:"42";}}
+				
+						into this:
+				
+						@media -sass-debug-info{filename{font-family:file\:\/\/z\:\/Path\/To\/style\.less}line{font-family:\0000342}}
+						*/
+						fs.readFile(destFile, 'utf8', function (err, data) {
+							if (err) {
+								console.log(destFile + ' written succesfully. Error while opening that file for fixing SASS media-query syntax... ');
+							}
+								// loaded, change and save
+							else {
+								data = data.replace(/@media\s+\-sass\-debug\-info\{\s*filename\{\s*font\-family\:\s*\"(.+?)"\;?\}line\{\s*font\-family\:\s*\"(.+)\"\;?\}\}/g, function (m, mFn, mLn) {
+									return '@media -sass-debug-info{filename{font-family:file\\:\\/\\/' + mFn.replace(/\\/g, '\\\/').replace(/\:/g, '\\:').replace(/\./g, '\\.') + '}line{font-family:\\00003' + mLn + '}}';
+								});
+								fs.writeFile(destFile, data, function (err) {
+									if (err) {
+										console.log(destFile + ' written and read succesfully. Error while writing that file for fixing SASS media-query syntax... ', data, err);
+									}
+								});
+							}
+						});
+					}
 			});
 		}
 	});
@@ -247,68 +310,93 @@ function filterFiles(f, stat){
 	return false;
 }
 
+console.log("Watching for changes recursively:", (sourceFolders.length > 1 ? "\n" : "") + sourceFolders.map(function(folder) { return path.resolve(folder); }).join("\n"), sourceFolders.length>1 ? "\n" : "");
 // Here's where we setup the watch function 
-watchTree(
-  sourceFolder, 
-  {interval: 500, ignoreDotFiles:true,filter:filterFiles}, 
-  function (f, curr, prev, rebuilt) {
-  	if (typeof f == "object" && prev === null && curr === null) {
-  		// Finished walking the tree
-  		return;
-  	} else if (curr.nlink === 0) {
-  		// f was removed
-  		console.log(f +" was removed.")
-  	}else {
-  		// f is a new file or changed
-  		//console.log("The file: "+f+ " was changed. "+new Date().toLocaleTimeString())
-  		if (!rebuilt) 
-  			console.log("");
-  		rebuilt = rebuilt || {};
-  		if (!rebuilt[f]) {
-  			rebuilt[f] = 1;
-  			compileCSS(f);
-  			var fullPath = path.resolve(f);
-  			var compile = arguments.callee;
-  			for(var file in dependinces) {
-  				for(var f in dependinces[file]) {
-  					if (f == fullPath) {
-  						compile.call(this, file, {}, {}, rebuilt);
-  						break;
-  					}
-  				}
-  			}
-  		}
-  	}
-  },
-  function(f, stat){
-  	//automatically detect dependinces such as @import url('a.less') or '../b.less' or '/c.less' or 'http://localhost/d.less'
-	//so whenever they change generate its parents too!
-  	dependinces[f] = dependinces[f] || {};
-  	fs.readFile(f, 'utf8', function(err, data) {
-  		if (err) {
-  			console.log(f + ' cannot be read to determine url imports');
-  		}
-  		data.replace(/url\s*\([\s\'\"]*(.*\.less)?[\s\'\"]*\)/gi, function(match, url) {
-  			var lessDir = path.dirname(f);
-  			var root = path.resolve("");
-  			var uriRegex = /(https?|file)(\:\/\/)(.*?)\/(.*)/gi;
-			if (uriRegex.test(url))
-  				url.replace(uriRegex, function(match, protocol, protocol_suffix, domain, url){
-  					addDependince("", root, url);
-  					return url;
-  				});
-  			else {
-				addDependince(root, lessDir, url);
-  			}
-  			return match;
-  			function addDependince(root, lessDir, relative, join) {
-  				relative = relative.replace(/\//g, '\\');
-  				var final = path.join(lessDir, relative);
-  				final = path.join(root, final);
-  				dependinces[f][final]=1;
-			  }
-  		});
-  	});
-  	compileCSS(f);
-  }
-);
+var dependinces = {};
+var options = {interval: 500, ignoreDotFiles:true,filter:filterFiles, watching: {}};
+
+function watchFilesOrFolders(filesOrFolders) {
+	if (!Array.isArray(filesOrFolders))
+		filesOrFolders = [filesOrFolders];
+	watchTree(filesOrFolders, options, watchCallback, initCallback);
+	function watchCallback(f, curr, prev, rebuilt) {
+		if (typeof f == "object" && prev === null && curr === null) {
+			// Finished walking the tree
+			return;
+		} else if (curr.nlink === 0) {
+			// f was removed
+			console.log(f +" was removed.")
+		}else {
+			var fullPath = fixCase(path.resolve(f));
+			// f is a new file or changed
+			//console.log("The file: "+f+ " was changed. "+new Date().toLocaleTimeString())
+			if (!rebuilt) 
+				console.log("");
+  		
+			rebuilt = rebuilt || {};
+			if (!rebuilt[fullPath]) {
+				rebuilt[fullPath] = 1;
+				compileCSS(f);
+				var compile = arguments.callee;
+				for(var file in dependinces) {
+					for(var f in dependinces[file]) {
+						if (f == fullPath && file !== fullPath && !rebuilt[file]) {
+							compile.call(this, file, {}, {}, rebuilt);
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	function initCallback(f, stat){
+		//automatically detect dependinces such as @import url('a.less') or '../b.less' or '/c.less' or 'http://localhost/d.less'
+		//so whenever they change generate its parents too!
+		//console.log("compiling");
+		compileCSS(f);
+		f = path.resolve(f);
+		f = fixCase(f);
+		dependinces[f] = dependinces[f] || {};
+		fs.readFile(f, 'utf8', function(err, data) {
+			if (err) {
+				console.log(f + ' cannot be read to determine url imports');
+			}
+			data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function(match, u, url) {
+				//console.log("import", u, url, f);
+				if (!/\.less/gi.test(url))
+					return match; 
+				var lessDir = path.dirname(f);
+				var root = path.resolve("");
+				var uriRegex = /(https?|file)(\:\/\/)(.*?)\/(.*)/gi;
+				if (uriRegex.test(url))
+					url.replace(uriRegex, function(match, protocol, protocol_suffix, domain, url){
+						addDependince("", root, url);
+						return url;
+					});
+				else {
+					addDependince("", lessDir, url);
+				}
+				return match;
+				function addDependince(root, lessDir, relative, join) {
+					relative = relative.replace(/\//g, '\\');
+					var final = path.join(lessDir, relative);
+					final = path.join(root, final);
+					final = fixCase(final);
+					dependinces[f][final]=1;
+				
+					//monitor external dependinces
+					fs.stat(final, function(err, stat) {
+						if (!err && !stat.isDirectory())
+							watchFilesOrFolders([final]);
+					});
+					console.log("dependince[", path.relative(path.resolve(''), f), "] = ", path.relative(path.resolve(''), final));
+				}
+			});
+		});
+	}
+}
+watchFilesOrFolders(sourceFolders);
+
+function fixCase(f) {
+	return caseSensitive ? f : f && f.toLowerCase();
+}
