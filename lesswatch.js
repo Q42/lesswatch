@@ -19,7 +19,14 @@
     Mikeal Rogers for writing the original folder watch script
     https://github.com/mikeal/watch
        
-    Usage:     node lesswatch.js [options] <source-folder> [destination-folder]
+    Usage:     node lesswatch.js [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
+
+	 [options] can contain original lessc options to pass to the compiler, or
+	 --source=folder			Adds multiple source folders
+	 --case-sensitive			Files and folders are parsed case-sensitive, including their dependinces. Useful on a non-windows machine"
+	 --show-dependinces		Prints dependinces between less files, so you can debug why certain files are generated together.
+	 --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.
+	
     Examples:  
 
     Outputting all to a custom folder i.e. css
@@ -52,9 +59,12 @@ var sys = require('util')
   , exec = require('child_process').exec;
 
 var args = process.argv.slice(2)
-  , lessArgs = [] // arguments to pass to the lessc compiler
+  , lessArgs = [] // arguments to pass to the lessc compiler for .css debug version
+  , lessArgsMin = ['--yui-compress', '--compress'] // arguments to pass to the lessc compiler for .min.css runtime version
   , sourceFolders = []
   , destFolder
+  , generateMinCss = false
+  , showDependinces = false
   , caseSensitive = false
   , writeMediaQueryDebugInfo = false // flag to see if writing sass media query info was set
   , fixMediaQueryDebugInfo = true; // we could make this optional if we want
@@ -71,12 +81,17 @@ args.forEach(function (arg) {
 		if (source)
 			sourceFolders.push(source[1]);
 		else {
-			if (arg.match(/\-\-case-sensitive/i))
+			if (arg.match(/\-\-show-dependinces/i))
+				showDependinces = true;
+			else if (arg.match(/\-\-case-sensitive/i))
 				caseSensitive = true;
+			else if (arg.match(/\-\-generate-min/i) || arg.match(/\-\-generate-min-css/i))
+				generateMinCss = true;
 			else {
 				lessArgs.push(arg);
 				if (arg.match(/\-\-line\-numbers\=mediaquery/i))
 					writeMediaQueryDebugInfo = true;
+				else lessArgsMin.push(arg);
 			}
 		}
 	}
@@ -85,7 +100,11 @@ args.forEach(function (arg) {
 if (!sourceFolders.length) {
 	console.log("Usage:");
 	console.log("  node lesswatch.js [options] <source-folder> [destination-folder] [--source=folder1] [--source=folder2] [--source=folder etc.]");
-	console.log("  ([options] can contain original lessc options to pass to the compiler)");
+	console.log("  [options] can contain original lessc options to pass to the compiler, or");
+	console.log("  --source=folder			Adds multiple source folders");
+	console.log("  --case-sensitive			Files and folders are parsed case-sensitive, including their dependinces. Useful on a non-windows machine");
+	console.log("  --show-dependinces		Prints dependinces between less files, so you can debug why certain files are generated together.");
+	console.log("  --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.");
 	console.log("\nThe source-folder will be scanned recursively.\nPay attention when you are specifying `destination-folder` and naming multiple files with the same name but in different/sub foldersas they might get overriten.");
 	console.log("\nTo export 'less/*.less' into 'css/*.css':");
 	console.log("  node lesswatch.js less css");
@@ -267,7 +286,8 @@ function compileCSS(file) {
 				if (!err)
 					if (stat.size == 0) {
 						//console.log("Dleeting empty file", destFile);
-						fs.unlink(destFile);
+						fs.unlink(destFile, function(err) {
+						});
 					}
 					else
 						if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
@@ -302,6 +322,25 @@ function compileCSS(file) {
 			});
 		}
 	});
+	var minFile = destFile.replace(/.css$/i, ".min.css");
+	if (generateMinCss) {
+		command = "lessc " + lessArgsMin.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + minFile;
+		exec(command, function (error, stdout, stderr) {
+			if (error !== null) {
+				console.log('exec error: ' + error);
+				console.log("stdout : " + stdout)
+				console.log("stderr : " + stderr)
+			}
+			fs.stat(minFile, function (err, stat) {
+				//delete empty .min.css files generated such as for variables.less or mixins.less
+				if (!err)
+					if (stat.size == 0) {
+						fs.unlink(minFile, function(err) {
+						});
+					}
+			});
+		});
+	}
 }
 
 // This is the function we use to filter the files to watch.
@@ -399,7 +438,8 @@ function watchFilesOrFolders(filesOrFolders) {
 						if (!err && !stat.isDirectory())
 							watchFilesOrFolders([final]);
 					});
-					console.log("dependince[", path.relative(path.resolve(''), f), "] = ", path.relative(path.resolve(''), final));
+					if (showDependinces)
+						console.log("dependince[", path.relative(path.resolve(''), f), "] = ", path.relative(path.resolve(''), final));
 				}
 			});
 		});
