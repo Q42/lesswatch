@@ -351,9 +351,10 @@ function compileCSS(file) {
 	dependencies[f] = {};
 	fs.readFile(f, 'utf8', function (err, data) {
 		if (err) {
-			console.log(f + ' cannot be read to determine url imports');
+			console.log(f + ' cannot be read to determine url imports:', err);
+			return;
 		}
-		data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function (match, u, url) {
+		data && data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function (match, u, url) {
 			//console.log("import", u, url, f);
 			if (!/\.less/gi.test(url))
 				return match;
