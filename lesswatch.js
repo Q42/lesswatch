@@ -1,4 +1,4 @@
-#! /usr/bin/env node
+//#! /usr/bin/env node
 
 /*  Copyright 2012, Martin Kool (twitter: @mrtnkl)
     Released under the MIT license. Refer to MIT-LICENSE.txt.
@@ -149,6 +149,7 @@ function walk (dir, options, callback, initCallback) {
 								if (options.filter && options.filter(f, stat)) return done && callback(null, options.files);
 								options.files[f] = stat;
 								if (stat.isDirectory()) {
+									delete options.watching[lowerCaseFile];//allow the sub-folder to be watched, since we'll walk through it
 									walk(f, options, callback, initCallback);
 								}else{
 									initCallback&&initCallback(f, stat);
@@ -264,40 +265,40 @@ function compileCSS(file){
 			fs.stat(destFile, function(err, stat) {
 				//delete empty .css files generated such as for variables.less or mixins.less
 				if (!err)
-				if (stat.size == 0) {
-					//console.log("Dleeting empty file", destFile);
-					fs.unlink(destFile);
-				}
-				else
-					if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
-						/*
-				
-						Now, the mediaquery lines are not written correctly for webkit inspector, so adjust them 
-						Change this:
-				
-						@media -sass-debug-info{filename{font-family:"z:\Path\To\style.less";}line{font-family:"42";}}
-				
-						into this:
-				
-						@media -sass-debug-info{filename{font-family:file\:\/\/z\:\/Path\/To\/style\.less}line{font-family:\0000342}}
-						*/
-						fs.readFile(destFile, 'utf8', function (err, data) {
-							if (err) {
-								console.log(destFile + ' written succesfully. Error while opening that file for fixing SASS media-query syntax... ');
-							}
-								// loaded, change and save
-							else {
-								data = data.replace(/@media\s+\-sass\-debug\-info\{\s*filename\{\s*font\-family\:\s*\"(.+?)"\;?\}line\{\s*font\-family\:\s*\"(.+)\"\;?\}\}/g, function (m, mFn, mLn) {
-									return '@media -sass-debug-info{filename{font-family:file\\:\\/\\/' + mFn.replace(/\\/g, '\\\/').replace(/\:/g, '\\:').replace(/\./g, '\\.') + '}line{font-family:\\00003' + mLn + '}}';
-								});
-								fs.writeFile(destFile, data, function (err) {
-									if (err) {
-										console.log(destFile + ' written and read succesfully. Error while writing that file for fixing SASS media-query syntax... ', data, err);
-									}
-								});
-							}
-						});
+					if (stat.size == 0) {
+						//console.log("Dleeting empty file", destFile);
+						fs.unlink(destFile);
 					}
+					else
+						if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
+							/*
+					
+							Now, the mediaquery lines are not written correctly for webkit inspector, so adjust them 
+							Change this:
+					
+							@media -sass-debug-info{filename{font-family:"z:\Path\To\style.less";}line{font-family:"42";}}
+					
+							into this:
+					
+							@media -sass-debug-info{filename{font-family:file\:\/\/z\:\/Path\/To\/style\.less}line{font-family:\0000342}}
+							*/
+							fs.readFile(destFile, 'utf8', function (err, data) {
+								if (err) {
+									console.log(destFile + ' written succesfully. Error while opening that file for fixing SASS media-query syntax... ');
+								}
+									// loaded, change and save
+								else {
+									data = data.replace(/@media\s+\-sass\-debug\-info\{\s*filename\{\s*font\-family\:\s*\"(.+?)"\;?\}line\{\s*font\-family\:\s*\"(.+)\"\;?\}\}/g, function (m, mFn, mLn) {
+										return '@media -sass-debug-info{filename{font-family:file\\:\\/\\/' + mFn.replace(/\\/g, '\\\/').replace(/\:/g, '\\:').replace(/\./g, '\\.') + '}line{font-family:\\00003' + mLn + '}}';
+									});
+									fs.writeFile(destFile, data, function (err) {
+										if (err) {
+											console.log(destFile + ' written and read succesfully. Error while writing that file for fixing SASS media-query syntax... ', data, err);
+										}
+									});
+								}
+							});
+						}
 			});
 		}
 	});
@@ -389,6 +390,8 @@ function watchFilesOrFolders(filesOrFolders) {
 					var final = path.join(lessDir, relative);
 					final = path.join(root, final);
 					final = fixCase(final);
+					if (dependinces[f][final])
+						return;
 					dependinces[f][final]=1;
 				
 					//monitor external dependinces
