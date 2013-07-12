@@ -1,4 +1,4 @@
-//#! /usr/bin/env node
+#! /usr/bin/env node
 
 /*  Copyright 2012, Martin Kool (twitter: @mrtnkl)
     Released under the MIT license. Refer to MIT-LICENSE.txt.
@@ -82,7 +82,7 @@ args.forEach(function (arg) {
 	}
 });
 
-if (!sourceFolders.length){
+if (!sourceFolders.length) {
 	console.log("Usage:");
 	console.log("  node lesswatch.js [options] <source-folder> [destination-folder] [--source=folder1] [--source=folder2] [--source=folder etc.]");
 	console.log("  ([options] can contain original lessc options to pass to the compiler)");
@@ -100,8 +100,8 @@ if (!sourceFolders.length){
 }
 
 // Walk the directory tree
-function walk (dir, options, callback, initCallback) {
-	if (!callback) {callback = options; options = {}}
+function walk(dir, options, callback, initCallback) {
+	if (!callback) { callback = options; options = {} }
 	if (!options.files) options.files = {};
 	if (!callback.pending) callback.pending = 0;
 	var lowerCaseDir = fixCase(dir);
@@ -129,7 +129,7 @@ function walk (dir, options, callback, initCallback) {
 					var lowerCaseFile = fixCase(f);
 					if (!options.watching[lowerCaseFile]) {
 						options.watching[lowerCaseFile] = 1;
-					
+
 						callback.pending += 1;
 						fs.stat(f, function (err, stat) {
 							var enoent = false
@@ -151,11 +151,11 @@ function walk (dir, options, callback, initCallback) {
 								if (stat.isDirectory()) {
 									delete options.watching[lowerCaseFile];//allow the sub-folder to be watched, since we'll walk through it
 									walk(f, options, callback, initCallback);
-								}else{
-									initCallback&&initCallback(f, stat);
+								} else {
+									initCallback && initCallback(f, stat);
 								}
 
-								if (done)  {
+								if (done) {
 									callback(null, options.files);
 								}
 							}
@@ -172,17 +172,17 @@ function walk (dir, options, callback, initCallback) {
 
 var watchFilePooling = {};//used for fs.watchFile as it executes too many times for the same change
 //Setup fs.watchFile() for each file.
-var watchTree = function ( roots, options, watchCallback, initCallback ) {
-	if (!watchCallback) {watchCallback = options; options = {}, watching = {}}
-	roots.forEach(function(root) {
-		
+var watchTree = function (roots, options, watchCallback, initCallback) {
+	if (!watchCallback) { watchCallback = options; options = {}, watching = {} }
+	roots.forEach(function (root) {
+
 		walk(root, options, callback, initCallback);
-		
+
 		function callback(err, files) {
 			if (err) throw err;
 			var fileWatcher = function (f) {
 				fs.watchFile(f, options, function (c, p) {
-					if (watchFilePooling[f]+50>new Date().getTime())
+					if (watchFilePooling[f] + 50 > new Date().getTime())
 						return;
 					watchFilePooling[f] = new Date().getTime();
 					if (c.nlink === 0) {
@@ -197,22 +197,22 @@ var watchTree = function ( roots, options, watchCallback, initCallback ) {
 					if (files[f] && !files[f].isDirectory() && c.nlink !== 0 && files[f].mtime.getTime() == c.mtime.getTime()) return;
 					files[f] = c;
 					if (!c.isDirectory()) {
-						if(options.ignoreDotFiles && (path.basename(f)[0] === '.')) return;
-						if(options.filter&& options.filter(f, c)) return;
+						if (options.ignoreDotFiles && (path.basename(f)[0] === '.')) return;
+						if (options.filter && options.filter(f, c)) return;
 						watchCallback(f, c, p);
-					}else {
+					} else {
 						fs.readdir(f, function (err, nfiles) {
 							if (err) return;
 							nfiles.forEach(function (b) {
 								var file = path.join(f, b);
 								if (!files[file]) {
 									fs.stat(file, function (err, stat) {
-										if(options.ignoreDotFiles && (path.basename(b)[0] === '.')) return;
-										if(options.filter&& options.filter(b, stat)) return;
+										if (options.ignoreDotFiles && (path.basename(b)[0] === '.')) return;
+										if (options.filter && options.filter(b, stat)) return;
 										console.log("changed file", file);
 										watchCallback(file, stat, null);
 										files[file] = stat;
-										fileWatcher(file); 
+										fileWatcher(file);
 									})
 								}
 							})
@@ -231,14 +231,14 @@ var watchTree = function ( roots, options, watchCallback, initCallback ) {
 }
 
 // String function to retrieve the filename without the extension
-function getFilenameWithoutExtension(filename){
+function getFilenameWithoutExtension(filename) {
 	var parts = filename.replace(/^.*[\\\/]/, '').split(".");
 	parts.pop();
 	return parts.join(".");
 }
 
 // String function to retrieve the file's extension
-function getFileExtension(filename){
+function getFileExtension(filename) {
 	var extension = filename.split(".").pop();
 	if (extension == filename)
 		return ""
@@ -247,22 +247,22 @@ function getFileExtension(filename){
 }
 
 //Here's where we run the less compiler
-function compileCSS(file){
+function compileCSS(file) {
 	var filename = getFilenameWithoutExtension(file);
-	
-	var destFile = destFolder ? destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css" : path.join(path.dirname(file),  filename.replace(/\s+/g, "\\ ") + ".css");
+
+	var destFile = destFolder ? destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css" : path.join(path.dirname(file), filename.replace(/\s+/g, "\\ ") + ".css");
 	console.log(new Date().toLocaleTimeString(), "lessc " + lessArgs.join(" ") + " " + path.relative(path.resolve(""), path.resolve(file)).replace(/\s+/g, "\\ ") + " ");
 	var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + destFile;
 	// Run the command
 	exec(command, function (error, stdout, stderr) {
-		
+
 		if (error !== null) {
 			console.log('exec error: ' + error);
 			console.log("stdout : " + stdout)
 			console.log("stderr : " + stderr)
 		}
 		else {
-			fs.stat(destFile, function(err, stat) {
+			fs.stat(destFile, function (err, stat) {
 				//delete empty .css files generated such as for variables.less or mixins.less
 				if (!err)
 					if (stat.size == 0) {
@@ -305,12 +305,12 @@ function compileCSS(file){
 }
 
 // This is the function we use to filter the files to watch.
-function filterFiles(f, stat){
+function filterFiles(f, stat) {
 	var filename = getFilenameWithoutExtension(f);
 	var extension = getFileExtension(f);
 	if (stat && !stat.isDirectory())
-		if (filename.substr(0,1) == "_" || 
-		filename.substr(0,1) == "." || 
+		if (filename.substr(0, 1) == "_" ||
+		filename.substr(0, 1) == "." ||
 		filename == "" ||
 		allowedExtensions.indexOf(extension) == -1
 		)
@@ -318,10 +318,10 @@ function filterFiles(f, stat){
 	return false;
 }
 
-console.log("Watching for changes recursively:", (sourceFolders.length > 1 ? "\n" : "") + sourceFolders.map(function(folder) { return path.resolve(folder); }).join("\n"), sourceFolders.length>1 ? "\n" : "");
+console.log("Watching for changes recursively:", (sourceFolders.length > 1 ? "\n" : "") + sourceFolders.map(function (folder) { return path.resolve(folder); }).join("\n"), sourceFolders.length > 1 ? "\n" : "");
 // Here's where we setup the watch function 
 var dependinces = {};
-var options = {interval: 500, ignoreDotFiles:true,filter:filterFiles, watching: {}};
+var options = { interval: 500, ignoreDotFiles: true, filter: filterFiles, watching: {} };
 
 function watchFilesOrFolders(filesOrFolders) {
 	if (!Array.isArray(filesOrFolders))
@@ -333,21 +333,21 @@ function watchFilesOrFolders(filesOrFolders) {
 			return;
 		} else if (curr.nlink === 0) {
 			// f was removed
-			console.log(f +" was removed.")
-		}else {
+			console.log(f + " was removed.")
+		} else {
 			var fullPath = fixCase(path.resolve(f));
 			// f is a new file or changed
 			//console.log("The file: "+f+ " was changed. "+new Date().toLocaleTimeString())
-			if (!rebuilt) 
+			if (!rebuilt)
 				console.log("");
-  		
+
 			rebuilt = rebuilt || {};
 			if (!rebuilt[fullPath]) {
 				rebuilt[fullPath] = 1;
 				compileCSS(f);
 				var compile = arguments.callee;
-				for(var file in dependinces) {
-					for(var f in dependinces[file]) {
+				for (var file in dependinces) {
+					for (var f in dependinces[file]) {
 						if (f == fullPath && file !== fullPath && !rebuilt[file]) {
 							compile.call(this, file, {}, {}, rebuilt);
 							break;
@@ -357,7 +357,7 @@ function watchFilesOrFolders(filesOrFolders) {
 			}
 		}
 	}
-	function initCallback(f, stat){
+	function initCallback(f, stat) {
 		//automatically detect dependinces such as @import url('a.less') or '../b.less' or '/c.less' or 'http://localhost/d.less'
 		//so whenever they change generate its parents too!
 		//console.log("compiling");
@@ -365,19 +365,19 @@ function watchFilesOrFolders(filesOrFolders) {
 		f = path.resolve(f);
 		f = fixCase(f);
 		dependinces[f] = dependinces[f] || {};
-		fs.readFile(f, 'utf8', function(err, data) {
+		fs.readFile(f, 'utf8', function (err, data) {
 			if (err) {
 				console.log(f + ' cannot be read to determine url imports');
 			}
-			data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function(match, u, url) {
+			data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function (match, u, url) {
 				//console.log("import", u, url, f);
 				if (!/\.less/gi.test(url))
-					return match; 
+					return match;
 				var lessDir = path.dirname(f);
 				var root = path.resolve("");
 				var uriRegex = /(https?|file)(\:\/\/)(.*?)\/(.*)/gi;
 				if (uriRegex.test(url))
-					url.replace(uriRegex, function(match, protocol, protocol_suffix, domain, url){
+					url.replace(uriRegex, function (match, protocol, protocol_suffix, domain, url) {
 						addDependince("", root, url);
 						return url;
 					});
@@ -392,10 +392,10 @@ function watchFilesOrFolders(filesOrFolders) {
 					final = fixCase(final);
 					if (dependinces[f][final])
 						return;
-					dependinces[f][final]=1;
-				
+					dependinces[f][final] = 1;
+
 					//monitor external dependinces
-					fs.stat(final, function(err, stat) {
+					fs.stat(final, function (err, stat) {
 						if (!err && !stat.isDirectory())
 							watchFilesOrFolders([final]);
 					});
