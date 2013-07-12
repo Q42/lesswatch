@@ -7,11 +7,11 @@ When the --line-numbers=mediaquery argument is used, this nodejs script will fix
 An enhanced version of `G42/lesswatch` with support of:
 * recursive folders
 * multiple source folders
-* automatically detection of `@import`, when importing `.less` files, those will automatically be tracked, so when changed dependent files will be automatically generated as well
-* show-dependinces tree
+* automatically detection of `@import`, when importing `.less` files, those will automatically be tracked, so when changed dependent files will be automatically generated as well. These will be re-detected every time a file is updated/changed.
+* show-dependencies tree
 * generate `.min.css` files
 * delete empty `.css` and `.min.css` files for non-css, but less specific files such as  `variables.less` or `mixins.less` 
-* 
+ 
 I only added those latter modifications. All credits should go to those who did the most work (which is like 99%):
 
 Jonathan Cheung for writing the entire less watcher
