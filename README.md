@@ -4,6 +4,14 @@ LESS folder watcher with optional debug information
 A nodejs script that allows you to watch a folder for changes and compile the less css files into another folder, optionally passing original lessc compiler arguments. 
 When the --line-numbers=mediaquery argument is used, this nodejs script will fix the syntax so that webkit understands it too.
 
+An enhanced version of `G42/lesswatch` with support of:
+* recursive folders
+* multiple source folders
+* automatically detection of `@import`, when importing `.less` files, those will automatically be tracked, so when changed dependent files will be automatically generated as well
+* show-dependinces tree
+* generate `.min.css` files
+* delete empty `.css` and `.min.css` files for non-css, but less specific files such as  `variables.less` or `mixins.less` 
+* 
 I only added those latter modifications. All credits should go to those who did the most work (which is like 99%):
 
 Jonathan Cheung for writing the entire less watcher
@@ -36,4 +44,46 @@ That will watch ./less folder and compile the less css files into ./css when the
 * This script only compiles files with `.less` extension. More file extensions can be added by modifying the `allowedExtensions` array.
 * Files that start with underscores `_style.css` or period `.style.css` are ignored. This behavior can be changed in the `filterFiles()` function.
 
-Github: https://github.com/Q42/lesswatch
+
+##Advanced options
+ 
+###Usage:     
+```bash
+node lesswatch.js [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
+
+ [options] can contain original lessc options to pass to the compiler, or
+ --source=folder			Adds multiple source folders
+ --case-sensitive			Files and folders are parsed case-sensitive, including their dependinces. Useful on a non-windows machine"
+ --show-dependinces		Prints dependinces between less files, so you can debug why certain files are generated together.
+ --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.
+```	
+###Examples:  
+
+* Outputting all to a custom folder i.e. css
+```bash
+	node lesswatch.js --line-numbers=mediaquery less css
+```
+
+That will watch ./less folder and compile the less css files into 
+         ./css when they are added/changed and add mediaquery-formatted 
+         debug info to the css for debugging with webkit-inspector.
+    
+* Outputting all to the same folder as where the less source was found
+
+```bash
+node lesswatch.js --line-numbers=mediaquery less
+```
+  
+  That will watch ./less folder and compile the less css files into 
+        ./less when they are added/changed and add mediaquery-formatted 
+        debug info to the css for debugging with webkit-inspector.
+
+* Monitoring multiple folders and outputting all to the same folder as where the less source was found
+
+```bash
+node lesswatch.js --line-numbers=mediaquery --source=less --source=content --source=App
+```
+
+That will watch ./less, ./content and ./App folders and compile the less css files into the same folder 
+        as the .less files were found when they are added/changed and add mediaquery-formatted 
+        debug info to the css for debugging with webkit-inspector.
