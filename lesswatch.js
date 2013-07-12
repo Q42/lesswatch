@@ -23,8 +23,10 @@
 
 	 [options] can contain original lessc options to pass to the compiler, or
 	 --source=folder			Adds multiple source folders
-	 --case-sensitive			Files and folders are parsed case-sensitive, including their dependinces. Useful on a non-windows machine"
-	 --show-dependinces		Prints dependinces between less files, so you can debug why certain files are generated together.
+	 --case-sensitive			Files and folders are parsed case-sensitive, including their dependencies. Useful on a non-windows machine"
+	 --show-dependency
+	 --show-dependencies		Prints dependencies between less files, so you can debug why certain files are generated together.
+	 --generate-min-css
 	 --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.
 	
     Examples:  
@@ -64,7 +66,7 @@ var args = process.argv.slice(2)
   , sourceFolders = []
   , destFolder
   , generateMinCss = false
-  , showDependinces = false
+  , showDependencies = false
   , caseSensitive = false
   , writeMediaQueryDebugInfo = false // flag to see if writing sass media query info was set
   , fixMediaQueryDebugInfo = true; // we could make this optional if we want
@@ -81,8 +83,8 @@ args.forEach(function (arg) {
 		if (source)
 			sourceFolders.push(source[1]);
 		else {
-			if (arg.match(/\-\-show-dependinces/i))
-				showDependinces = true;
+			if (arg.match(/\-\-show-dependencies/i) || arg.match(/\-\-show-dependency/i))
+				showDependencies = true;
 			else if (arg.match(/\-\-case-sensitive/i))
 				caseSensitive = true;
 			else if (arg.match(/\-\-generate-min/i) || arg.match(/\-\-generate-min-css/i))
@@ -102,8 +104,10 @@ if (!sourceFolders.length) {
 	console.log("  node lesswatch.js [options] <source-folder> [destination-folder] [--source=folder1] [--source=folder2] [--source=folder etc.]");
 	console.log("  [options] can contain original lessc options to pass to the compiler, or");
 	console.log("  --source=folder			Adds multiple source folders");
-	console.log("  --case-sensitive			Files and folders are parsed case-sensitive, including their dependinces. Useful on a non-windows machine");
-	console.log("  --show-dependinces		Prints dependinces between less files, so you can debug why certain files are generated together.");
+	console.log("  --case-sensitive			Files and folders are parsed case-sensitive, including their dependencies. Useful on a non-windows machine");
+	console.log("  --show-dependency		");
+	console.log("  --show-dependencies		Prints dependencies between less files, so you can debug why certain files are generated together.");
+	console.log("  --generate-min-css		");
 	console.log("  --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.");
 	console.log("\nThe source-folder will be scanned recursively.\nPay attention when you are specifying `destination-folder` and naming multiple files with the same name but in different/sub foldersas they might get overriten.");
 	console.log("\nTo export 'less/*.less' into 'css/*.css':");
@@ -227,9 +231,9 @@ var watchTree = function (roots, options, watchCallback, initCallback) {
 								if (!files[file]) {
 									fs.stat(file, function (err, stat) {
 										if (options.ignoreDotFiles && (path.basename(b)[0] === '.')) return;
-										if (options.filter && options.filter(b, stat)) return;
+										if (options.filter && options.filter(file, stat)) return;
 										console.log("changed file", file);
-										watchCallback(file, stat, null);
+										watchCallback(file, c, p);
 										files[file] = stat;
 										fileWatcher(file);
 									})
@@ -341,6 +345,56 @@ function compileCSS(file) {
 			});
 		});
 	}
+	var f = path.resolve(file);
+	f = fixCase(f);
+	var oldDependencies = dependencies[f] || {};
+	dependencies[f] = {};
+	fs.readFile(f, 'utf8', function (err, data) {
+		if (err) {
+			console.log(f + ' cannot be read to determine url imports');
+		}
+		data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function (match, u, url) {
+			//console.log("import", u, url, f);
+			if (!/\.less/gi.test(url))
+				return match;
+			var lessDir = path.dirname(f);
+			var root = path.resolve("");
+			var uriRegex = /(https?|file)(\:\/\/)(.*?)\/(.*)/gi;
+			if (uriRegex.test(url))
+				url.replace(uriRegex, function (match, protocol, protocol_suffix, domain, url) {
+					addDependency("", root, url);
+					return url;
+				});
+			else {
+				addDependency("", lessDir, url);
+			}
+			return match;
+			function addDependency(root, lessDir, relative, join) {
+				relative = relative.replace(/\//g, '\\');
+				var final = path.join(lessDir, relative);
+				final = path.join(root, final);
+				final = fixCase(final);
+				if (dependencies[f][final])
+					return;
+				dependencies[f][final] = 1;
+
+				//monitor external dependencies
+				fs.stat(final, function (err, stat) {
+					if (!err && !stat.isDirectory())
+						watchFilesOrFolders([final]);
+				});
+				if (showDependencies && !oldDependencies[final])
+					console.log("dep[", path.relative(path.resolve(''), f), "] +=", path.relative(path.resolve(''), final));
+			}
+		});
+		if (showDependencies) {
+			Object.getOwnPropertyNames(oldDependencies).forEach(function(oldDependency) {
+				if (!dependencies[f][oldDependency])
+					console.log("dep[", path.relative(path.resolve(''), f), "] -=", path.relative(path.resolve(''), oldDependency));
+			});
+		}
+
+	});
 }
 
 // This is the function we use to filter the files to watch.
@@ -357,9 +411,9 @@ function filterFiles(f, stat) {
 	return false;
 }
 
-console.log("Watching for changes recursively:", (sourceFolders.length > 1 ? "\n" : "") + sourceFolders.map(function (folder) { return path.resolve(folder); }).join("\n"), sourceFolders.length > 1 ? "\n" : "");
+console.log("Watching for changes of", allowedExtensions,"files recursively:", (sourceFolders.length > 1 ? "\n" : "") + sourceFolders.map(function (folder) { return path.resolve(folder); }).join("\n"), sourceFolders.length > 1 ? "\n" : "");
 // Here's where we setup the watch function 
-var dependinces = {};
+var dependencies = {};
 var options = { interval: 500, ignoreDotFiles: true, filter: filterFiles, watching: {} };
 
 function watchFilesOrFolders(filesOrFolders) {
@@ -385,8 +439,8 @@ function watchFilesOrFolders(filesOrFolders) {
 				rebuilt[fullPath] = 1;
 				compileCSS(f);
 				var compile = arguments.callee;
-				for (var file in dependinces) {
-					for (var f in dependinces[file]) {
+				for (var file in dependencies) {
+					for (var f in dependencies[file]) {
 						if (f == fullPath && file !== fullPath && !rebuilt[file]) {
 							compile.call(this, file, {}, {}, rebuilt);
 							break;
@@ -397,52 +451,10 @@ function watchFilesOrFolders(filesOrFolders) {
 		}
 	}
 	function initCallback(f, stat) {
-		//automatically detect dependinces such as @import url('a.less') or '../b.less' or '/c.less' or 'http://localhost/d.less'
+		//automatically detect dependencies such as @import url('a.less') or '../b.less' or '/c.less' or 'http://localhost/d.less'
 		//so whenever they change generate its parents too!
 		//console.log("compiling");
 		compileCSS(f);
-		f = path.resolve(f);
-		f = fixCase(f);
-		dependinces[f] = dependinces[f] || {};
-		fs.readFile(f, 'utf8', function (err, data) {
-			if (err) {
-				console.log(f + ' cannot be read to determine url imports');
-			}
-			data.replace(/\@import\s*(url)?\s*\(?[\s\'\"]*(.*\.less)[\s\'\"]*\)?\s*\;?/gi, function (match, u, url) {
-				//console.log("import", u, url, f);
-				if (!/\.less/gi.test(url))
-					return match;
-				var lessDir = path.dirname(f);
-				var root = path.resolve("");
-				var uriRegex = /(https?|file)(\:\/\/)(.*?)\/(.*)/gi;
-				if (uriRegex.test(url))
-					url.replace(uriRegex, function (match, protocol, protocol_suffix, domain, url) {
-						addDependince("", root, url);
-						return url;
-					});
-				else {
-					addDependince("", lessDir, url);
-				}
-				return match;
-				function addDependince(root, lessDir, relative, join) {
-					relative = relative.replace(/\//g, '\\');
-					var final = path.join(lessDir, relative);
-					final = path.join(root, final);
-					final = fixCase(final);
-					if (dependinces[f][final])
-						return;
-					dependinces[f][final] = 1;
-
-					//monitor external dependinces
-					fs.stat(final, function (err, stat) {
-						if (!err && !stat.isDirectory())
-							watchFilesOrFolders([final]);
-					});
-					if (showDependinces)
-						console.log("dependince[", path.relative(path.resolve(''), f), "] = ", path.relative(path.resolve(''), final));
-				}
-			});
-		});
 	}
 }
 watchFilesOrFolders(sourceFolders);
