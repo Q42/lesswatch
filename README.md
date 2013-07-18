@@ -49,7 +49,7 @@ That will watch ./less folder and compile the less css files into ./css when the
  
 ###Usage:     
 ```bash
-node less_watch [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
+less_watch [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
 
  [options] can contain original lessc options to pass to the compiler, or
  --source=folder			Adds multiple source folders
@@ -61,7 +61,7 @@ node less_watch [options] <source-folder> [destination-folder] --source=folder1 
 
 * Outputting all to a custom folder i.e. css
 ```
-	node less-watch --line-numbers=mediaquery less css
+	less-watch --line-numbers=mediaquery less css
 ```
 
 That will watch ./less folder and compile the less css files into 
@@ -71,7 +71,7 @@ That will watch ./less folder and compile the less css files into
 * Outputting all to the same folder as where the less source was found
 
 ```
-node less_watch --line-numbers=mediaquery less
+less_watch --line-numbers=mediaquery less
 ```
   
   That will watch ./less folder and compile the less css files into 
@@ -81,7 +81,7 @@ node less_watch --line-numbers=mediaquery less
 * Monitoring multiple folders and outputting all to the same folder as where the less source was found
 
 ```bash
-node less_watch --line-numbers=mediaquery --source=less --source=content --source=App
+less_watch --line-numbers=mediaquery --source=less --source=content --source=App
 ```
 
 That will watch ./less, ./content and ./App folders and compile the less css files into the same folder 
