@@ -4,14 +4,14 @@ LESS folder watcher with optional debug information
 A nodejs script that allows you to watch a folder for changes and compile the less css files into another folder, optionally passing original lessc compiler arguments. 
 When the --line-numbers=mediaquery argument is used, this nodejs script will fix the syntax so that webkit understands it too.
 
-An enhanced version of `G42/lesswatch` with support of:
+An enhanced version of [`G42/lesswatch`](https://github.com/Q42/lesswatch) with support of:
 * recursive folders
 * multiple source folders
-* automatically detection of `@import`, when importing `.less` files, those will automatically be tracked, so when changed dependent files will be automatically generated as well
-* show-dependinces tree
+* automatically detection of `@import`, when importing `.less` files, those will automatically be tracked, so when changed dependent files will be automatically generated as well. These will be re-detected every time a file is updated/changed.
+* show-dependencies tree
 * generate `.min.css` files
 * delete empty `.css` and `.min.css` files for non-css, but less specific files such as  `variables.less` or `mixins.less` 
-* 
+ 
 I only added those latter modifications. All credits should go to those who did the most work (which is like 99%):
 
 Jonathan Cheung for writing the entire less watcher
@@ -26,18 +26,18 @@ First, install LESS. Best to make them accessible from anywhere in your shell.
 ```
 npm install less --global
 ```
-Then, install lesswatch.
+Then, install less_watch.
 ```
-npm install lesswatch --global
+npm install less_watch --global
 ```
 
 ###Usage 
 ```
-lesswatch [options] <source-folder> <destination-folder>
+less_watch [options] <source-folder> <destination-folder>
 ```
 ###Example 
 ```
-lesswatch --line-numbers=mediaquery less css
+less_watch --line-numbers=mediaquery less css
 ```
 That will watch ./less folder and compile the less css files into ./css when they are added/changed and add mediaquery-formatted debug info to the css for debugging with webkit-inspector.
 
@@ -49,7 +49,7 @@ That will watch ./less folder and compile the less css files into ./css when the
  
 ###Usage:     
 ```bash
-node lesswatch.js [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
+less_watch [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
 
  [options] can contain original lessc options to pass to the compiler, or
  --source=folder			Adds multiple source folders
@@ -60,8 +60,8 @@ node lesswatch.js [options] <source-folder> [destination-folder] --source=folder
 ###Examples:  
 
 * Outputting all to a custom folder i.e. css
-```bash
-	node lesswatch.js --line-numbers=mediaquery less css
+```
+	less-watch --line-numbers=mediaquery less css
 ```
 
 That will watch ./less folder and compile the less css files into 
@@ -70,8 +70,8 @@ That will watch ./less folder and compile the less css files into
     
 * Outputting all to the same folder as where the less source was found
 
-```bash
-node lesswatch.js --line-numbers=mediaquery less
+```
+less_watch --line-numbers=mediaquery less
 ```
   
   That will watch ./less folder and compile the less css files into 
@@ -81,7 +81,7 @@ node lesswatch.js --line-numbers=mediaquery less
 * Monitoring multiple folders and outputting all to the same folder as where the less source was found
 
 ```bash
-node lesswatch.js --line-numbers=mediaquery --source=less --source=content --source=App
+less_watch --line-numbers=mediaquery --source=less --source=content --source=App
 ```
 
 That will watch ./less, ./content and ./App folders and compile the less css files into the same folder 
