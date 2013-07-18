@@ -60,8 +60,8 @@ node less_watch [options] <source-folder> [destination-folder] --source=folder1 
 ###Examples:  
 
 * Outputting all to a custom folder i.e. css
-```bash
-	node lesswatch.js --line-numbers=mediaquery less css
+```
+	node less-watch --line-numbers=mediaquery less css
 ```
 
 That will watch ./less folder and compile the less css files into 
@@ -70,7 +70,7 @@ That will watch ./less folder and compile the less css files into
     
 * Outputting all to the same folder as where the less source was found
 
-```bash
+```
 node less_watch --line-numbers=mediaquery less
 ```
   
