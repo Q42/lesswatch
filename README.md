@@ -12,7 +12,7 @@ An enhanced version of [`Q42/lesswatch`](https://github.com/Q42/lesswatch) with 
 * generate `.min.css` files
 * delete empty `.css` and `.min.css` files for non-css, but less specific files such as  `variables.less` or `mixins.less` 
  
-I only added those latter modifications. All credits should go to those who did the most work (which is like 99%):
+I only added those latter modifications. All credits should go to those who did the most work (which is like 80%):
 
 Jonathan Cheung for writing the entire less watcher
 https://github.com/jonycheung/Dead-Simple-LESS-Watch-Compiler
