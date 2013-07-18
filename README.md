@@ -88,4 +88,4 @@ That will watch ./less, ./content and ./App folders and compile the less css fil
         as the .less files were found when they are added/changed and add mediaquery-formatted 
         debug info to the css for debugging with webkit-inspector.
 
-[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/ced79a6263a52ce6aed7515d0cd0b0f3 "githalytics.com")](http://githalytics.com/dotnetwise/lass_watch)
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/0825e5e6af81cd3f4a033494597cc5d9 "githalytics.com")](http://githalytics.com/dotnetwise/lass_watch)
