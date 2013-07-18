@@ -26,18 +26,18 @@ First, install LESS. Best to make them accessible from anywhere in your shell.
 ```
 npm install less --global
 ```
-Then, install lesswatch.
+Then, install less_watch.
 ```
-npm install lesswatch --global
+npm install less_watch --global
 ```
 
 ###Usage 
 ```
-lesswatch [options] <source-folder> <destination-folder>
+less_watch [options] <source-folder> <destination-folder>
 ```
 ###Example 
 ```
-lesswatch --line-numbers=mediaquery less css
+less_watch --line-numbers=mediaquery less css
 ```
 That will watch ./less folder and compile the less css files into ./css when they are added/changed and add mediaquery-formatted debug info to the css for debugging with webkit-inspector.
 
@@ -49,7 +49,7 @@ That will watch ./less folder and compile the less css files into ./css when the
  
 ###Usage:     
 ```bash
-node lesswatch.js [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
+node less_watch [options] <source-folder> [destination-folder] --source=folder1 --source=folder2 --source=folderEtc
 
  [options] can contain original lessc options to pass to the compiler, or
  --source=folder			Adds multiple source folders
@@ -71,7 +71,7 @@ That will watch ./less folder and compile the less css files into
 * Outputting all to the same folder as where the less source was found
 
 ```bash
-node lesswatch.js --line-numbers=mediaquery less
+node less_watch --line-numbers=mediaquery less
 ```
   
   That will watch ./less folder and compile the less css files into 
@@ -81,7 +81,7 @@ node lesswatch.js --line-numbers=mediaquery less
 * Monitoring multiple folders and outputting all to the same folder as where the less source was found
 
 ```bash
-node lesswatch.js --line-numbers=mediaquery --source=less --source=content --source=App
+node less_watch --line-numbers=mediaquery --source=less --source=content --source=App
 ```
 
 That will watch ./less, ./content and ./App folders and compile the less css files into the same folder 
