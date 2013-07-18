@@ -4,7 +4,7 @@ LESS folder watcher with optional debug information
 A nodejs script that allows you to watch a folder for changes and compile the less css files into another folder, optionally passing original lessc compiler arguments. 
 When the --line-numbers=mediaquery argument is used, this nodejs script will fix the syntax so that webkit understands it too.
 
-An enhanced version of [`G42/lesswatch`](https://github.com/Q42/lesswatch) with support of:
+An enhanced version of [`Q42/lesswatch`](https://github.com/Q42/lesswatch) with support of:
 * recursive folders
 * multiple source folders
 * automatically detection of `@import`, when importing `.less` files, those will automatically be tracked, so when changed dependent files will be automatically generated as well. These will be re-detected every time a file is updated/changed.
