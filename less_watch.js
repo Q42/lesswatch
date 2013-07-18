@@ -236,7 +236,7 @@ var watchTree = function (roots, options, watchCallback, initCallback) {
 										watchCallback(file, c, p);
 										files[file] = stat;
 										fileWatcher(file);
-									})
+									});
 								}
 							})
 						})
@@ -402,13 +402,14 @@ function compileCSS(file) {
 function filterFiles(f, stat) {
 	var filename = getFilenameWithoutExtension(f);
 	var extension = getFileExtension(f);
-	if (stat && !stat.isDirectory())
+	if (!stat || !stat.isDirectory())
 		if (filename.substr(0, 1) == "_" ||
 		filename.substr(0, 1) == "." ||
 		filename == "" ||
-		allowedExtensions.indexOf(extension) == -1
+		allowedExtensions.indexOf(extension) < 0
 		)
 			return true;
+	//console.log("filePath", f, "isDirectory", stat && stat.isDirectory(), "filename", filename, "extension", extension);
 	return false;
 }
 
