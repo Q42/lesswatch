@@ -87,3 +87,5 @@ less_watch --line-numbers=mediaquery --source=less --source=content --source=App
 That will watch ./less, ./content and ./App folders and compile the less css files into the same folder 
         as the .less files were found when they are added/changed and add mediaquery-formatted 
         debug info to the css for debugging with webkit-inspector.
+
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/ced79a6263a52ce6aed7515d0cd0b0f3 "githalytics.com")](http://githalytics.com/dotnetwise/lass_watch)
