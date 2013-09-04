@@ -194,6 +194,7 @@ function walk(dir, options, callback, initCallback) {
 }
 
 var watchFilePooling = {};//used for fs.watchFile as it executes too many times for the same change
+var watchingFilesAndFolders = {};
 //Setup fs.watchFile() for each file.
 var watchTree = function (roots, options, watchCallback, initCallback) {
 	if (!watchCallback) { watchCallback = options; options = {}, watching = {} }
@@ -204,6 +205,10 @@ var watchTree = function (roots, options, watchCallback, initCallback) {
 		function callback(err, files) {
 			if (err) throw err;
 			var fileWatcher = function (f) {
+				console.log("Watch", f);
+				if (watchingFilesAndFolders[f])
+					return;
+				watchingFilesAndFolders[f] = 1;
 				fs.watchFile(f, options, function (c, p) {
 					if (watchFilePooling[f] + 50 > new Date().getTime())
 						return;
