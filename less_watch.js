@@ -205,7 +205,6 @@ var watchTree = function (roots, options, watchCallback, initCallback) {
 		function callback(err, files) {
 			if (err) throw err;
 			var fileWatcher = function (f) {
-				console.log("Watch", f);
 				if (watchingFilesAndFolders[f])
 					return;
 				watchingFilesAndFolders[f] = 1;
@@ -293,41 +292,61 @@ function compileCSS(file) {
 			fs.stat(destFile, function (err, stat) {
 				//delete empty .css files generated such as for variables.less or mixins.less
 				if (!err)
-					if (stat.size == 0) {
-						//console.log("Dleeting empty file", destFile);
-						fs.unlink(destFile, function(err) {
-						});
-					}
-					else
-						if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
-							/*
-					
-							Now, the mediaquery lines are not written correctly for webkit inspector, so adjust them 
-							Change this:
-					
-							@media -sass-debug-info{filename{font-family:"z:\Path\To\style.less";}line{font-family:"42";}}
-					
-							into this:
-					
-							@media -sass-debug-info{filename{font-family:file\:\/\/z\:\/Path\/To\/style\.less}line{font-family:\0000342}}
-							*/
-							fs.readFile(destFile, 'utf8', function (err, data) {
-								if (err) {
-									console.log(destFile + ' written succesfully. Error while opening that file for fixing SASS media-query syntax... ');
-								}
-									// loaded, change and save
-								else {
-									data = data.replace(/@media\s+\-sass\-debug\-info\{\s*filename\{\s*font\-family\:\s*\"(.+?)"\;?\}line\{\s*font\-family\:\s*\"(.+)\"\;?\}\}/g, function (m, mFn, mLn) {
-										return '@media -sass-debug-info{filename{font-family:file\\:\\/\\/' + mFn.replace(/\\/g, '\\\/').replace(/\:/g, '\\:').replace(/\./g, '\\.') + '}line{font-family:\\00003' + mLn + '}}';
-									});
-									fs.writeFile(destFile, data, function (err) {
-										if (err) {
-											console.log(destFile + ' written and read succesfully. Error while writing that file for fixing SASS media-query syntax... ', data, err);
-										}
-									});
+				{
+					var mapFileName = path.basename(destFile);
+					var map = "\n/*# sourceMappingURL="+mapFileName+".map */";
+					var mapSize = map.length == stat.size;
+					//console.log("size0", stat.size, map.length, mapSize, destFile)
+
+					if (stat.size == 0 || mapSize) {
+						if (mapSize) {
+							fs.readFile(destFile, function(err, data) {
+								//console.log(data == map);
+								if (data == map)
+								{
+									//console.log("empty css file", destFile);
+									deleteFiles(destFile);
 								}
 							});
 						}
+						else deleteFiles(destFile);
+						function deleteFiles(destFile) {
+							//console.log("Deleting empty file", destFile);
+							fs.unlink(destFile, function(err) {err && console.log(err);});
+							fs.unlink(destFile+".map", function(err) {});
+						}
+					}
+				}
+				else
+					if (writeMediaQueryDebugInfo && fixMediaQueryDebugInfo) {
+						/*
+				
+						Now, the mediaquery lines are not written correctly for webkit inspector, so adjust them 
+						Change this:
+				
+						@media -sass-debug-info{filename{font-family:"z:\Path\To\style.less";}line{font-family:"42";}}
+				
+						into this:
+				
+						@media -sass-debug-info{filename{font-family:file\:\/\/z\:\/Path\/To\/style\.less}line{font-family:\0000342}}
+						*/
+						fs.readFile(destFile, 'utf8', function (err, data) {
+							if (err) {
+								console.log(destFile + ' written succesfully. Error while opening that file for fixing SASS media-query syntax... ');
+							}
+								// loaded, change and save
+							else {
+								data = data.replace(/@media\s+\-sass\-debug\-info\{\s*filename\{\s*font\-family\:\s*\"(.+?)"\;?\}line\{\s*font\-family\:\s*\"(.+)\"\;?\}\}/g, function (m, mFn, mLn) {
+									return '@media -sass-debug-info{filename{font-family:file\\:\\/\\/' + mFn.replace(/\\/g, '\\\/').replace(/\:/g, '\\:').replace(/\./g, '\\.') + '}line{font-family:\\00003' + mLn + '}}';
+								});
+								fs.writeFile(destFile, data, function (err) {
+									if (err) {
+										console.log(destFile + ' written and read succesfully. Error while writing that file for fixing SASS media-query syntax... ', data, err);
+									}
+								});
+							}
+						});
+					}
 			});
 		}
 	});
@@ -342,11 +361,12 @@ function compileCSS(file) {
 			}
 			fs.stat(minFile, function (err, stat) {
 				//delete empty .min.css files generated such as for variables.less or mixins.less
-				if (!err)
-					if (stat.size == 0) {
-						fs.unlink(minFile, function(err) {
-						});
-					}
+				if (!err) {
+					var mapFileName = path.basename(minFile);
+					if (stat.size == 0)
+						fs.unlink(minFile, function(err) {});
+						fs.unlink(minFile+".map", function(err) {});
+				}
 			});
 		});
 	}
