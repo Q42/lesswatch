@@ -1,7 +1,7 @@
 {
   "author": "@dotnetwise http://www.dotnetwise.com",
   "name": "less_watch",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "repository": {
     "url": "https://github.com/dotnetwise/lesswatch"
   },

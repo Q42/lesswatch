@@ -27,7 +27,7 @@
 	 --show-dependency
 	 --show-dependencies		Prints dependencies between less files, so you can debug why certain files are generated together.
 	 --generate-min-css
-	 --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.
+	 --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --clean-compress arguments to lessc. --line-numbers will automatically be stripped out.
 	
     Examples:  
 
@@ -62,7 +62,7 @@ var sys = require('util')
 
 var args = process.argv.slice(2)
   , lessArgs = [] // arguments to pass to the lessc compiler for .css debug version
-  , lessArgsMin = ['--yui-compress', '--compress'] // arguments to pass to the lessc compiler for .min.css runtime version
+  , lessArgsMin = ['--clean-compress', '--compress'] // arguments to pass to the lessc compiler for .min.css runtime version
   , sourceFolders = []
   , destFolder
   , generateMinCss = false
@@ -108,7 +108,7 @@ if (!sourceFolders.length) {
 	console.log("  --show-dependency		");
 	console.log("  --show-dependencies		Prints dependencies between less files, so you can debug why certain files are generated together.");
 	console.log("  --generate-min-css		");
-	console.log("  --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --yui-compress arguments to lessc. --line-numbers will automatically be stripped out.");
+	console.log("  --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --clean-compress arguments to lessc. --line-numbers will automatically be stripped out.");
 	console.log("\nThe source-folder will be scanned recursively.\nPay attention when you are specifying `destination-folder` and naming multiple files with the same name but in different/sub foldersas they might get overriten.");
 	console.log("\nTo export 'less/*.less' into 'css/*.css':");
 	console.log("  node lesswatch.js less css");
@@ -363,9 +363,10 @@ function compileCSS(file) {
 				//delete empty .min.css files generated such as for variables.less or mixins.less
 				if (!err) {
 					var mapFileName = path.basename(minFile);
-					if (stat.size == 0)
+					if (stat.size == 0) {
 						fs.unlink(minFile, function(err) {});
 						fs.unlink(minFile+".map", function(err) {});
+					}
 				}
 			});
 		});
