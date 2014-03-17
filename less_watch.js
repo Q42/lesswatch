@@ -296,7 +296,7 @@ function compileCSS(file) {
 					var mapFileName = path.basename(destFile);
 					var map = "\n/*# sourceMappingURL="+mapFileName+".map */";
 					var mapSize = map.length == stat.size;
-					//console.log("size0", stat.size, map.length, mapSize, destFile)
+				        //console.log("size0", stat.size, map.length, mapSize, destFile)
 
 					if (stat.size == 0 || mapSize) {
 						if (mapSize) {
@@ -310,11 +310,14 @@ function compileCSS(file) {
 							});
 						}
 						else deleteFiles(destFile);
-						function deleteFiles(destFile) {
-							//console.log("Deleting empty file", destFile);
-							fs.unlink(destFile, function(err) {err && console.log(err);});
-							fs.unlink(destFile+".map", function(err) {});
-						}
+						
+					}
+					
+
+					function deleteFiles(destFile) {
+						//console.log("Deleting empty file", destFile);
+						fs.unlink(destFile, function(err) {err && console.log(err);});
+						fs.unlink(destFile+".map", function(err) {});
 					}
 				}
 				else
@@ -363,7 +366,9 @@ function compileCSS(file) {
 				//delete empty .min.css files generated such as for variables.less or mixins.less
 				if (!err) {
 					var mapFileName = path.basename(minFile);
-					if (stat.size == 0) {
+					var map = "/*# sourceMappingURL="+mapFileName+".map */";
+					var mapSize = map.length == stat.size;
+					if (stat.size == 0 || mapSize) {
 						fs.unlink(minFile, function(err) {});
 						fs.unlink(minFile+".map", function(err) {});
 					}
