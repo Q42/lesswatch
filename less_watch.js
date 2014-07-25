@@ -27,7 +27,7 @@
 	 --show-dependency
 	 --show-dependencies		Prints dependencies between less files, so you can debug why certain files are generated together.
 	 --generate-min-css
-	 --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --clean-compress arguments to lessc. --line-numbers will automatically be stripped out.
+	 --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --clean-css arguments to lessc. --line-numbers will automatically be stripped out.
 	
     Examples:  
 
@@ -62,7 +62,7 @@ var sys = require('util')
 
 var args = process.argv.slice(2)
   , lessArgs = [] // arguments to pass to the lessc compiler for .css debug version
-  , lessArgsMin = ['--clean-compress', '--compress'] // arguments to pass to the lessc compiler for .min.css runtime version
+  , lessArgsMin = ['--clean-css', '--compress'] // arguments to pass to the lessc compiler for .min.css runtime version
   , sourceFolders = []
   , destFolder
   , generateMinCss = false
@@ -108,7 +108,7 @@ if (!sourceFolders.length) {
 	console.log("  --show-dependency		");
 	console.log("  --show-dependencies		Prints dependencies between less files, so you can debug why certain files are generated together.");
 	console.log("  --generate-min-css		");
-	console.log("  --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --clean-compress arguments to lessc. --line-numbers will automatically be stripped out.");
+	console.log("  --generate-min			Enables generation of .min.css files as well as .css files. They will be optimized using --compress and --clean-css arguments to lessc. --line-numbers will automatically be stripped out.");
 	console.log("\nThe source-folder will be scanned recursively.\nPay attention when you are specifying `destination-folder` and naming multiple files with the same name but in different/sub foldersas they might get overriten.");
 	console.log("\nTo export 'less/*.less' into 'css/*.css':");
 	console.log("  node lesswatch.js less css");
@@ -280,6 +280,7 @@ function compileCSS(file) {
 	var destFile = destFolder ? destFolder + "/" + filename.replace(/\s+/g, "\\ ") + ".css" : path.join(path.dirname(file), filename.replace(/\s+/g, "\\ ") + ".css");
 	console.log(new Date().toLocaleTimeString(), "lessc " + lessArgs.join(" ") + " " + path.relative(path.resolve(""), path.resolve(file)).replace(/\s+/g, "\\ ") + " ");
 	var command = "lessc " + lessArgs.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + destFile;
+	//console.log("Executing command", command);
 	// Run the command
 	exec(command, function (error, stdout, stderr) {
 
@@ -356,6 +357,7 @@ function compileCSS(file) {
 	var minFile = destFile.replace(/.css$/i, ".min.css");
 	if (generateMinCss) {
 		command = "lessc " + lessArgsMin.join(" ") + " " + file.replace(/\s+/g, "\\ ") + " " + minFile;
+		//console.log("Executing command", command);
 		exec(command, function (error, stdout, stderr) {
 			if (error !== null) {
 				console.log('exec error: ' + error);
