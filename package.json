@@ -1,9 +1,9 @@
 {
-  "author": "@mrtnkl http://martinkool.com",
-  "name": "lesswatch",
-  "version": "0.0.2",
+  "author": "@dotnetwise http://www.dotnetwise.com",
+  "name": "less_watch",
+  "version": "1.7.4",
   "repository": {
-    "url": "https://github.com/Q42/lesswatch"
+    "url": "https://github.com/dotnetwise/lesswatch"
   },
   "engines": {
     "node": ">=0.5.0"
@@ -27,7 +27,7 @@
   ],
   "license": "MIT",
   "preferGlobal": "true",
-   "bin": {
-     "lesswatch" : "lesswatch.js"
-   }
+  "bin": {
+    "less_watch": "less_watch.js"
+  }
 }
